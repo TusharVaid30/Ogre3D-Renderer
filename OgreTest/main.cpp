@@ -3,21 +3,27 @@
 #include <iostream>
 #include <OgreWindowEventUtilities.h>
 #include <cstdlib>
-#include <cmath>
-#include <cassert>
 
 bool move = false;
 bool moved = false;
 Ogre::SceneNode* selectedNode;
 Ogre::Vector2 *startMousePosition;
 
+float cubeScale = 0.3;
+float shift = 0.7;
+
 Ogre::SceneNode* allNodes[2];
-Ogre::Vector3 nodesPositions[2] = {Ogre::Vector3(1, 0, 0), 
-    Ogre::Vector3(-1, 0, 0)};
+Ogre::Vector3 nodesPositions[2] = {Ogre::Vector3(0, 0.7, 0), 
+    Ogre::Vector3(0, 0, 0)};
 
 float lerp(float a, float b, float f)
 {
     return a * (1.0 - f) + (b * f);
+}
+
+double clamp(double x, double upper, double lower)
+{
+    return std::min(upper, std::max(x, lower));
 }
 
 class KeyHandler : public OgreBites::InputListener
@@ -93,7 +99,7 @@ public:
                     for (int i = 0; i < 2; i++)
                     {
                         if (allNodes[i]->getName() == selectedNode->getName())
-                            nodesPositions[i].x -= 0.5;
+                            nodesPositions[i].x -= shift;
                     }
                 }
                 if (direction.x > 0)
@@ -101,7 +107,7 @@ public:
                     for (int i = 0; i < 2; i++)
                     {
                         if (allNodes[i]->getName() == selectedNode->getName())
-                            nodesPositions[i].x += 0.5;
+                            nodesPositions[i].x += shift;
                     }
                 }
             }
@@ -113,7 +119,7 @@ public:
                     for (int i = 0; i < 2; i++)
                     {
                         if (allNodes[i]->getName() == selectedNode->getName())
-                            nodesPositions[i].y += 0.5;
+                            nodesPositions[i].y += shift;
                     }
                 }
                 if (direction.y > 0)
@@ -121,29 +127,12 @@ public:
                     for (int i = 0; i < 2; i++)
                     {
                         if (allNodes[i]->getName() == selectedNode->getName())
-                            nodesPositions[i].y -= 0.5;
+                            nodesPositions[i].y -= shift;
                     }
                 }
             }
         }
 
-        return true;
-    }
-
-    bool keyPressed(const OgreBites::KeyboardEvent& evt) override
-    {
-        if (evt.keysym.sym == OgreBites::SDLK_LEFT)
-        {
-            move = true;
-        }
-        return true;
-    }
-    bool keyReleased(const OgreBites::KeyboardEvent& evt) override
-    {
-        if (evt.keysym.sym == OgreBites::SDLK_LEFT)
-        {
-            move = false;
-        }
         return true;
     }
 };
@@ -155,6 +144,10 @@ class Frames : public Ogre::FrameListener
         for (int i = 0; i < 2; i++)
         {
             Ogre::Vector3 pos = allNodes[i]->getPosition();
+
+            nodesPositions[i].x = clamp(nodesPositions[i].x, 2.1, -2.1);
+            nodesPositions[i].y = clamp(nodesPositions[i].y, 1.4, -1.4);
+
             pos.x = lerp(pos.x, nodesPositions[i].x, 
                 10.0f * evt.timeSinceLastFrame);
             pos.y = lerp(pos.y, nodesPositions[i].y,
@@ -202,22 +195,22 @@ int main(int argc, char* argv[])
     ctx.getRenderWindow()->addViewport(cam)->setBackgroundColour(Ogre::ColourValue(1, 1, 1));
 
     // finally something to render
-    Ogre::Entity* ent = scnMgr->createEntity("Colored.mesh");
+    Ogre::Entity* ent = scnMgr->createEntity("Textured.mesh");
     ent->setCastShadows(true);
-    //ent->setMaterialName("Examples/Rockwall");
+    ent->setMaterialName("BrickWall2");
     Ogre::Entity* ent2 = scnMgr->createEntity("Colored.mesh");
 
     Ogre::SceneNode* node = scnMgr->getRootSceneNode()->createChildSceneNode("cube1");
     node->attachObject(ent);
     node->setPosition(0, 0, 0);
     node->pitch(Ogre::Degree(90.0f));
-    node->setScale(Ogre::Vector3(0.5, 0.5, 0.5));
+    node->setScale(Ogre::Vector3(cubeScale, cubeScale, cubeScale));
 
     Ogre::SceneNode* node2 = scnMgr->getRootSceneNode()->createChildSceneNode("cube2");
     node2->attachObject(ent2);
     node2->setPosition(1, 0, 0);
     node2->pitch(Ogre::Degree(90.0f));
-    node2->setScale(Ogre::Vector3(0.5, 0.5, 0.5));
+    node2->setScale(Ogre::Vector3(cubeScale, cubeScale, cubeScale));
 
     allNodes[0] = node;
     allNodes[1] = node2;
