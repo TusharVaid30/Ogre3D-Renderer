@@ -3,11 +3,22 @@
 #include <iostream>
 #include <OgreWindowEventUtilities.h>
 #include <cstdlib>
+#include <cmath>
+#include <cassert>
 
 bool move = false;
 bool moved = false;
 Ogre::SceneNode* selectedNode;
 Ogre::Vector2 *startMousePosition;
+
+Ogre::SceneNode* allNodes[2];
+Ogre::Vector3 nodesPositions[2] = {Ogre::Vector3(1, 0, 0), 
+    Ogre::Vector3(-1, 0, 0)};
+
+float lerp(float a, float b, float f)
+{
+    return a * (1.0 - f) + (b * f);
+}
 
 class KeyHandler : public OgreBites::InputListener
 {
@@ -67,6 +78,8 @@ public:
     {
         if (selectedNode != nullptr)
         {
+            move = true;
+
             Ogre::Vector2* currentlocation = new Ogre::Vector2(evt.x, evt.y);
 
             Ogre::Vector2 direction((currentlocation->x - startMousePosition->x),
@@ -76,21 +89,41 @@ public:
             {
                 moved = true;
                 if (direction.x < 0)
-                    selectedNode->setPosition(selectedNode->getPosition().x - 0.3, 
-                        selectedNode->getPosition().y, 0);
+                {
+                    for (int i = 0; i < 2; i++)
+                    {
+                        if (allNodes[i]->getName() == selectedNode->getName())
+                            nodesPositions[i].x -= 0.5;
+                    }
+                }
                 if (direction.x > 0)
-                    selectedNode->setPosition(selectedNode->getPosition().x + 0.3, 
-                        selectedNode->getPosition().y, 0);
+                {
+                    for (int i = 0; i < 2; i++)
+                    {
+                        if (allNodes[i]->getName() == selectedNode->getName())
+                            nodesPositions[i].x += 0.5;
+                    }
+                }
             }
             if (std::abs(direction.x) < std::abs(direction.y) && !moved)
             {
                 moved = true;
                 if (direction.y < 0)
-                    selectedNode->setPosition(selectedNode->getPosition().x, 
-                        selectedNode->getPosition().y + 0.3, 0);
+                {
+                    for (int i = 0; i < 2; i++)
+                    {
+                        if (allNodes[i]->getName() == selectedNode->getName())
+                            nodesPositions[i].y += 0.5;
+                    }
+                }
                 if (direction.y > 0)
-                    selectedNode->setPosition(selectedNode->getPosition().x, 
-                        selectedNode->getPosition().y - 0.3, 0);
+                {
+                    for (int i = 0; i < 2; i++)
+                    {
+                        if (allNodes[i]->getName() == selectedNode->getName())
+                            nodesPositions[i].y -= 0.5;
+                    }
+                }
             }
         }
 
@@ -111,6 +144,24 @@ public:
         {
             move = false;
         }
+        return true;
+    }
+};
+
+class Frames : public Ogre::FrameListener
+{
+    bool frameStarted(const Ogre::FrameEvent& evt)
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            Ogre::Vector3 pos = allNodes[i]->getPosition();
+            pos.x = lerp(pos.x, nodesPositions[i].x, 
+                10.0f * evt.timeSinceLastFrame);
+            pos.y = lerp(pos.y, nodesPositions[i].y,
+                10.0f * evt.timeSinceLastFrame);
+            allNodes[i]->setPosition(pos);
+        }
+
         return true;
     }
 };
@@ -156,26 +207,27 @@ int main(int argc, char* argv[])
     //ent->setMaterialName("Examples/Rockwall");
     Ogre::Entity* ent2 = scnMgr->createEntity("Colored.mesh");
 
-    Ogre::SceneNode* node = scnMgr->getRootSceneNode()->createChildSceneNode();
+    Ogre::SceneNode* node = scnMgr->getRootSceneNode()->createChildSceneNode("cube1");
     node->attachObject(ent);
     node->setPosition(0, 0, 0);
     node->pitch(Ogre::Degree(90.0f));
+    node->setScale(Ogre::Vector3(0.5, 0.5, 0.5));
 
-    Ogre::SceneNode* node2 = scnMgr->getRootSceneNode()->createChildSceneNode();
+    Ogre::SceneNode* node2 = scnMgr->getRootSceneNode()->createChildSceneNode("cube2");
     node2->attachObject(ent2);
     node2->setPosition(1, 0, 0);
     node2->pitch(Ogre::Degree(90.0f));
+    node2->setScale(Ogre::Vector3(0.5, 0.5, 0.5));
+
+    allNodes[0] = node;
+    allNodes[1] = node2;
     
-    // register for input events
     KeyHandler keyHandler(node, cam, scnMgr);
     ctx.addInputListener(&keyHandler);
 
-    while (ctx.getRoot()->renderOneFrame())
-    {
-        Ogre::WindowEventUtilities::messagePump();
-        if (move)
-            node->translate(-0.01, 0, 0);
-    }
+    Frames frame;
+    ctx.getRoot()->addFrameListener(&frame);
+    ctx.getRoot()->startRendering();
 
     ctx.closeApp();
     return 0;
