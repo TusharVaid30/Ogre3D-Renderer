@@ -26,6 +26,32 @@ double clamp(double x, double upper, double lower)
     return std::min(upper, std::max(x, lower));
 }
 
+bool CheckTile(Ogre::SceneManager* scnMgr, Ogre::Vector3 pos, Ogre::Vector3 direction)
+{
+    Ogre::Ray rayCast(pos + (direction * 0.4), direction);
+
+    Ogre::RaySceneQuery* rq = scnMgr->createRayQuery(rayCast);
+    
+    rq->setSortByDistance(true, 1);
+    rq->setQueryTypeMask(Ogre::SceneManager::ENTITY_TYPE_MASK);
+
+    Ogre::RaySceneQueryResult res = rq->execute();
+    Ogre::RaySceneQueryResult::iterator it = res.begin();
+
+    if (it != res.end())
+    {
+        if ((pos + (direction * 0.4)).squaredDistance
+        (it->movable->getParentSceneNode()->getPosition()) < Ogre::Real(0.2f))
+        {
+            std::cout << "tileFound";
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 class KeyHandler : public OgreBites::InputListener
 {
 private:
@@ -99,7 +125,10 @@ public:
                     for (int i = 0; i < 2; i++)
                     {
                         if (allNodes[i]->getName() == selectedNode->getName())
-                            nodesPositions[i].x -= shift;
+                        {
+                            if (!CheckTile(scene, selectedNode->getPosition(), Ogre::Vector3(-1, 0, 0)))
+                                nodesPositions[i].x -= shift;
+                        }
                     }
                 }
                 if (direction.x > 0)
@@ -107,7 +136,8 @@ public:
                     for (int i = 0; i < 2; i++)
                     {
                         if (allNodes[i]->getName() == selectedNode->getName())
-                            nodesPositions[i].x += shift;
+                            if (!CheckTile(scene, selectedNode->getPosition(), Ogre::Vector3(1, 0, 0)))
+                                nodesPositions[i].x += shift;
                     }
                 }
             }
@@ -119,7 +149,8 @@ public:
                     for (int i = 0; i < 2; i++)
                     {
                         if (allNodes[i]->getName() == selectedNode->getName())
-                            nodesPositions[i].y += shift;
+                            if (!CheckTile(scene, selectedNode->getPosition(), Ogre::Vector3(0, 1, 0)))
+                                nodesPositions[i].y += shift;
                     }
                 }
                 if (direction.y > 0)
@@ -127,7 +158,8 @@ public:
                     for (int i = 0; i < 2; i++)
                     {
                         if (allNodes[i]->getName() == selectedNode->getName())
-                            nodesPositions[i].y -= shift;
+                            if (!CheckTile(scene, selectedNode->getPosition(), Ogre::Vector3(0, -1, 0)))
+                                nodesPositions[i].y -= shift;
                     }
                 }
             }
