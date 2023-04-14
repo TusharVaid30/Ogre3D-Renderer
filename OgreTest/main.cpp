@@ -1,34 +1,52 @@
-// This file is part of the OGRE project.
-// It is subject to the license terms in the LICENSE file found in the top-level directory
-// of this distribution and at https://www.ogre3d.org/licensing.
-// SPDX-License-Identifier: MIT
-
 #include "Ogre.h"
 #include "OgreApplicationContext.h"
+#include <iostream>
+#include <OgreWindowEventUtilities.h>
 
-//! [key_handler]
+bool move = false;
+
+class WindowHandler : public OgreBites::ApplicationContextBase
+{
+    void windowClosed(Ogre::RenderWindow* rw) override
+    {
+        std::cout << "cloose";
+    }
+};
+
 class KeyHandler : public OgreBites::InputListener
 {
+private:
+    Ogre::SceneNode* player;
+
+public:
+    KeyHandler(Ogre::SceneNode* node)
+    {
+        player = node;
+    }
+
     bool keyPressed(const OgreBites::KeyboardEvent& evt) override
     {
-        if (evt.keysym.sym == OgreBites::SDLK_ESCAPE)
+        if (evt.keysym.sym == OgreBites::SDLK_LEFT)
         {
-            Ogre::Root::getSingleton().queueEndRendering();
+            move = true;
+        }
+        return true;
+    }
+    bool keyReleased(const OgreBites::KeyboardEvent& evt) override
+    {
+        if (evt.keysym.sym == OgreBites::SDLK_LEFT)
+        {
+            move = false;
         }
         return true;
     }
 };
-//! [key_handler]
 
 int main(int argc, char* argv[])
 {
-    //! [constructor]
     OgreBites::ApplicationContext ctx("OgreTutorialApp");
     ctx.initApp();
-    //! [constructor]
 
-    //! [setup]
-        // get a pointer to the already created root
     Ogre::Root* root = ctx.getRoot();
     Ogre::SceneManager* scnMgr = root->createSceneManager();
 
@@ -36,39 +54,52 @@ int main(int argc, char* argv[])
     Ogre::RTShader::ShaderGenerator* shadergen = Ogre::RTShader::ShaderGenerator::getSingletonPtr();
     shadergen->addSceneManager(scnMgr);
 
+    scnMgr->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
+
     // without light we would just get a black screen    
     Ogre::Light* light = scnMgr->createLight("MainLight");
     Ogre::SceneNode* lightNode = scnMgr->getRootSceneNode()->createChildSceneNode();
-    lightNode->setPosition(0, 10, 15);
+    lightNode->setPosition(-160, 0, 0);
+    light->setDiffuseColour(Ogre::ColourValue(1.0, 1.0, 1.0));
     lightNode->attachObject(light);
 
     // also need to tell where we are
     Ogre::SceneNode* camNode = scnMgr->getRootSceneNode()->createChildSceneNode();
-    camNode->setPosition(0, 0, 15);
+    camNode->setPosition(0, 1, 5);
     camNode->lookAt(Ogre::Vector3(0, 0, -1), Ogre::Node::TS_PARENT);
 
     // create the camera
     Ogre::Camera* cam = scnMgr->createCamera("myCam");
-    cam->setNearClipDistance(5); // specific to this sample
+    cam->setNearClipDistance(0.01); // specific to this sample
     cam->setAutoAspectRatio(true);
     camNode->attachObject(cam);
 
     // and tell it to render into the main window
-    ctx.getRenderWindow()->addViewport(cam);
+    ctx.getRenderWindow()->addViewport(cam)->setBackgroundColour(Ogre::ColourValue(1, 1, 1));
 
     // finally something to render
-    Ogre::Entity* ent = scnMgr->createEntity("Sinbad.mesh");
+    Ogre::Entity* ent = scnMgr->createEntity("TESTTEST.mesh");
+    ent->setCastShadows(true);
+    ent->setMaterialName("Examples/Rockwall");
+
     Ogre::SceneNode* node = scnMgr->getRootSceneNode()->createChildSceneNode();
     node->attachObject(ent);
-    //! [setup]
-
-    //! [main]
-        // register for input events
-    KeyHandler keyHandler;
+    node->setPosition(0, 0, 0);
+    node->pitch(Ogre::Degree(-90));
+    
+    // register for input events
+    KeyHandler keyHandler(node);
     ctx.addInputListener(&keyHandler);
 
-    ctx.getRoot()->startRendering();
+    WindowHandler wh;
+
+    while (ctx.getRoot()->renderOneFrame())
+    {
+        Ogre::WindowEventUtilities::messagePump();
+        if (move)
+            node->translate(-0.01, 0, 0);
+    }
+
     ctx.closeApp();
-    //! [main]
     return 0;
 }
